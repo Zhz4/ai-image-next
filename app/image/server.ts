@@ -1,8 +1,12 @@
 "use server";
 
+import OpenAI from "openai";
 import { prompts } from "./prompts";
-const baseUrl = process.env.BASE_URL;
-const apiKey = process.env.API_KEY;
+
+const client = new OpenAI({
+  baseURL: process.env.BASE_URL,
+  apiKey: process.env.API_KEY,
+});
 
 export const generateImage = async (
   prompt: string,
@@ -12,14 +16,10 @@ export const generateImage = async (
   image: string[] | null
 ) => {
   try {
-    // 构建消息内容
-    const content: Array<{
-      type: string;
-      text?: string;
-      size?: string;
-      image_url?: { url: string };
-      scene?: string;
-    }> = [
+    const content: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    > = [
       {
         type: "text",
         text: `${
@@ -28,7 +28,7 @@ export const generateImage = async (
       },
     ];
 
-    // 如果有上传的图片，添加到内容中
+    // 添加上传的参考图片
     if (image && image.length > 0 && image[0] !== "") {
       image.forEach((imgBase64) => {
         content.push({
@@ -40,61 +40,36 @@ export const generateImage = async (
       });
     }
 
-    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          {
-            role: "user",
-            content: content,
-          },
-        ],
-        presence_penalty: 0,
-        temperature: 0.5,
-        top_p: 1,
-        stream: false,
-      }),
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      stream: false,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error:", response.status, errorText);
-      throw new Error(`API Error: ${response.status} ${errorText}`);
+    const output = response.choices[0]?.message?.content || "";
+
+    const imageUrlRegex =
+      /!\[image\]\(((?:https?:\/\/[^\)]+|data:image\/[^;]+;base64,[^\)]+))\)/g;
+
+    const urls: string[] = [];
+    let match;
+
+    while ((match = imageUrlRegex.exec(output)) !== null) {
+      urls.push(match[1]);
     }
 
-    const data = await response.json();
-
-    // 解析新API返回格式，转换为前端期望的格式
-    if (data.choices && data.choices.length > 0) {
-      const content = data.choices[0].message.content;
-
-      // 从markdown格式提取图片URL或base64: ![image](url) 或 ![image](data:image/...)
-      const imageUrlRegex =
-        /!\[image\]\(((?:https?:\/\/[^\)]+|data:image\/[^;]+;base64,[^\)]+))\)/g;
-      const urls: string[] = [];
-      let match;
-
-      while ((match = imageUrlRegex.exec(content)) !== null) {
-        urls.push(match[1]);
-      }
-
-      return {
-        data: urls.map((url) => ({
-          url: url,
-          revised_prompt: prompt,
-        })),
-        original_response: data,
-      };
-    }
-
-    return data;
+    return {
+      data: urls.map((url) => ({
+        url,
+        revised_prompt: prompt,
+      })),
+    };
   } catch (error) {
-    console.error("Generate Image Error:", error);
     throw error;
   }
 };

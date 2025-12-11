@@ -25,9 +25,7 @@ export default function ImageGenerationPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [prompt, setPrompt] = useState("");
-  const [selectedModel, setSelectedModel] = useState(
-    "gemini-3-pro-image-preview-4k"
-  );
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash-image");
   const [ratio, setRatio] = useState("1:1");
   const [scene, setScene] = useState<keyof typeof prompts | undefined>(
     undefined

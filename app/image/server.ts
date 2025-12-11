@@ -1,29 +1,35 @@
 "use server";
 
+import { prompts } from "./prompts";
 const baseUrl = process.env.BASE_URL;
 const apiKey = process.env.API_KEY;
 
 export const generateImage = async (
   prompt: string,
   model: string,
-  resolution: string,
-  image: string[]
+  size: string,
+  scene: keyof typeof prompts | undefined,
+  image: string[] | null
 ) => {
   try {
     // 构建消息内容
     const content: Array<{
       type: string;
       text?: string;
+      size?: string;
       image_url?: { url: string };
+      scene?: string;
     }> = [
       {
         type: "text",
-        text: `Generate an image. ${prompt}. Output as a single complete image with aspect ratio ${resolution}. Do not include any text, watermark, or explanation in the response.`,
+        text: `${
+          scene ? prompts[scene] : ""
+        } Generate an image. ${prompt}. Output as a single complete image with aspect ratio ${size}. Do not include any text, watermark, or explanation in the response.`,
       },
     ];
 
     // 如果有上传的图片，添加到内容中
-    if (image && image.length > 0) {
+    if (image && image.length > 0 && image[0] !== "") {
       image.forEach((imgBase64) => {
         content.push({
           type: "image_url",

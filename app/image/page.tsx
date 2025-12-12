@@ -15,6 +15,7 @@ import { generateImage } from "./server";
 import { ImageUpload } from "@/components/ImageUpload";
 import { toast } from "sonner";
 import { prompts } from "./prompts";
+import { agent } from "./agent";
 
 interface GeneratedImage {
   url: string;
@@ -39,16 +40,16 @@ export default function ImageGenerationPage() {
   const handleGenerate = async () => {
     setIsLoading(true);
     try {
-      const result = await generateImage(
-        prompt,
-        selectedModel,
-        ratio,
-        scene,
-        uploadedImageBase64 ? [uploadedImageBase64] : null
+      const result = await agent(
+        prompt
+        // selectedModel,
+        // ratio,
+        // scene,
+        // uploadedImageBase64 ? [uploadedImageBase64] : null
       );
-
+      console.log(result);
       toast.success("图像生成成功");
-      setCurrentImages(result.data);
+      //   setCurrentImages(result.data);
     } catch (error) {
       toast.error("图像生成失败");
       console.error(error);
